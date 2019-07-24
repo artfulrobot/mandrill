@@ -1,5 +1,7 @@
 # Mandrill - Mandrill bounce processing.
 
+**Do not use this yet! Even the read me below is wrong!**
+
 Mandrill is one of many emailing services (e.g. SMTP relays). While many services
 offer to send all your bounced email to a particular email address (e.g. so
 CiviCRM can process bounces), Mandrill does not.
