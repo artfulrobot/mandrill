@@ -9,7 +9,7 @@ use CRM_Mandrill_ExtensionUtil as E;
  */
 class CRM_Mandrill_Form_Settings extends CRM_Admin_Form_Setting {
   protected $_settings = [
-    'mandrill_api_key' =>  CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME,
+    'mandrill_webhook_key' =>  CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME,
   ];
   public function buildQuickForm() {
     parent::buildQuickForm();

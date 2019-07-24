@@ -4,52 +4,114 @@ use CRM_Mandrill_ExtensionUtil as E;
 class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
   public function run() {
     try {
-      $event = $this->validateInput(file_get_contents('php://input'));
-      $this->processEvent($event);
-      Civi::log()->info("Mandrill Webhook successfully processed");
+      $events = $this->validateInput($_POST);
+      foreach ($events as $event) {
+        try {
+          $this->processEvent($event);
+          Civi::log()->info("Mandrill Webhook event successfully processed", ['event' => $event]);
+        }
+        catch (CRM_Mandrill_WebhookEventFailedException $e) {
+          Civi::log()->error("Mandrill Webhook event not processed: " . $e->getMessage(), ['event' => $event]);
+        }
+      }
     }
+    catch (CRM_Mandrill_WebhookInvalid $e) {
+      // Signature mismatch etc.
+      Civi::log()->error("Mandrill Webhook not processed: " . $e->getMessage(), []);
+    }
+    /*
     catch (CRM_Mandrill_WebhookRejectedException $e) {
       Civi::log()->notice("Mandrill Webhook ignored (returning 406)", ['message' => $e->getMessage()]);
       header("$_SERVER[SERVER_PROTOCOL] 406 " . $e->getMessage());
       echo json_encode(['error' => $e->getMessage()]);
     }
+     */
     catch (\Exception $e) {
       Civi::log()->notice("Mandrill Webhook fatal (returning 500)", ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-      header("$_SERVER[SERVER_PROTOCOL] 500");
+      header("$_SERVER[SERVER_PROTOCOL] 500 Server Error");
     }
-     CRM_Utils_System::civiExit();
+    CRM_Utils_System::civiExit();
   }
   /**
    * Check input and return the event data if all ok.
    *
-   * @param string raw input from POST body (json)
-   * @return StdClass
+   * @param array $post ($_POST)
+   * @return array
    */
-  public function validateInput($input) {
-    Civi::log()->info("Mandrill Webhook received. Raw input stored as context.", ['raw' => $input]);
-    $input = json_decode($input);
-    if (!$input) {
-      throw new CRM_Mandrill_WebhookRejectedException("Expected JSON but didn't get it.");
-    }
-    $sig = $input->signature->signature ?? 'MISSING SIGNATURE';
+  public function validateInput($post) {
 
-    $timestamp = ($input->signature->timestamp ?? 0);
-    /*
-    // Ensure webhooks recieved promptly - disable for testing.
-    if (abs(time() - $timestamp) > 15) {
-      throw new CRM_Mandrill_WebhookRejectedException("Event too old.");
+    // @todo check secret key matches.
+    if (function_exists('getallheaders')) {
+      $headers = getallheaders();
     }
-    */
-    $_ = $timestamp . ($input->signature->token ?? '');
-    $secret = $this->getApiKey();
-    if ($sig !==  hash_hmac('sha256', $_, $secret)) {
-      throw new CRM_Mandrill_WebhookRejectedException("Invalid signature");
+    else {
+      // Some server configs do not provide getallheaders().
+      // We only care about the X-Mandrill-Signature header so try to extract that from $_SERVER.
+      $headers = [];
+      if (isset($_SERVER['HTTP_X_MANDRILL_SIGNATURE'])) {
+        $headers['X-Mandrill-Signature'] = $_SERVER['HTTP_X_MANDRILL_SIGNATURE'];
+      }
     }
-    if (empty($input->{'event-data'})) {
-      throw new CRM_Mandrill_WebhookRejectedException("Missing event-data");
+
+    if (empty($headers['X-Mandrill-Signature'])) {
+      throw new CRM_Mandrill_WebhookInvalid('Missing signature');
     }
-    // OK, looks valid.
-    return $input->{'event-data'};
+
+    $webhook_url = CRM_Utils_System::url('civicrm/mandrill/webhook', NULL, TRUE, NULL, FALSE);
+    $webhook_key = Civi::settings()->get('mandrill_webhook_key');
+    $expected_signature = $this->generateSignature($webhook_key, $webhook_url, $post);
+    if ($headers['X-Mandrill-Signature'] !== $expected_signature) {
+      throw new CRM_Mandrill_WebhookInvalid('Webhook signature did not match.');
+    }
+
+    if (empty($post['mandrill_events'])) {
+      throw new CRM_Mandrill_WebhookInvalid("Missing mandrill_events key in POST.");
+    }
+    $events = json_decode($post['mandrill_events'], TRUE);
+    if (!is_array($events)) {
+      throw new CRM_Mandrill_WebhookInvalid("Missing mandrill_events data or not valid JSON.");
+    }
+    return $events;
+  }
+  /*
+   * Generates a base64-encoded signature for a Mandrill webhook request.
+   * @param string $webhook_key the webhook's authentication key
+   * @param string $url the webhook url
+   * @param array $params the request's POST parameters
+   */
+  function generateSignature($webhook_key, $url, $params) {
+    $signed_data = $url;
+    ksort($params);
+    foreach ($params as $key => $value) {
+      $signed_data .= $key;
+      $signed_data .= $value;
+    }
+
+    return base64_encode(hash_hmac('sha1', $signed_data, $webhook_key, true));
+  }
+
+  /**
+   * Actually process the data.
+   */
+  public function processEvent($event) {
+    switch ($event['event']){
+    case 'hard_bounce':
+      $this->processPermanentBounce($event);
+      break;
+    case 'soft_bounce':
+      $this->processTemporaryBounce($event);
+      break;
+
+    case 'send':
+    case 'deferral':
+    case 'unsub':
+    case 'reject':
+    case 'spam':
+    case 'open':
+    case 'click':
+    default:
+      throw new CRM_Mandrill_WebhookEventFailedException("Ignored '$event[event]' type event.");
+    }
   }
 
   /**
@@ -58,38 +120,7 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
    * @return string
    */
   public function getApiKey() {
-    return Civi::settings()->get('mandrill_api_key');
-  }
-
-  /**
-   * Actually process the data.
-   */
-  public function processEvent($event) {
-    switch ($event->event){
-    case 'failed':
-      if ($event->severity === 'permanent') {
-        $this->processPermanentBounce($event);
-      }
-      elseif ($event->severity === 'temporary') {
-        $this->processTemporaryBounce($event);
-      }
-      echo '{"success": 1}';
-      break;
-
-    case 'accepted':
-    case 'rejected':
-    case 'delivered':
-    case 'opened':
-    case 'closed':
-    case 'clicked':
-    case 'unsubscribed':
-    case 'complained':
-    case 'stored':
-      throw new CRM_Mandrill_WebhookRejectedException("$event->event is not handled by this webhook.");
-
-    default:
-      throw new CRM_Mandrill_WebhookRejectedException("Unrecognised webhook event type is not handled by this webhook.");
-    }
+    return Civi::settings()->get('mandrill_webhook_key');
   }
 
   public function processPermanentBounce($event) {
@@ -103,14 +134,15 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
     // Ideally we would have access to 'X-CiviMail-Bounce' but I don't think we do.
     $bounce_params = $this->extractVerpData($event);
     if (!$bounce_params) {
-      throw new CRM_Mandrill_WebhookRejectedException("Cannot find VERP data necessary to process bounce.");
+      throw new CRM_Mandrill_WebhookEventFailedException("Cannot find VERP data necessary to process bounce.");
     }
     $bounce_params['bounce_type_id'] = $this->getCiviBounceTypeId($type);
-    $bounce_params['bounce_reason'] = ($event->{'delivery-status'}->description ?? '')
+    /*$bounce_params['bounce_reason'] = ($event->{'delivery-status'}->description ?? '')
       . " "
       . ($event->{'delivery-status'}->message ?? '')
       . " Mandrill Event Id: " . ($event->id ?? '');
-    $bounced = CRM_Mailing_Event_BAO_Bounce::create($bounce_params);
+     */
+    //$bounced = CRM_Mailing_Event_BAO_Bounce::create($bounce_params);
   }
   /**
    * Extract data from verp data if we can.
@@ -119,6 +151,7 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
    * @return array with keys: job_id, event_queue_id, hash
    */
   public function extractVerpData($event) {
+    return; // xxx
 
     if (!empty($event->{'user-variables'}->{'civimail-bounce'})) {
       // Great, we found the header we added in our hook_civicrm_alterMailParams.
@@ -154,3 +187,5 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
     return $bounce_type->id;
   }
 }
+class CRM_Mandrill_WebhookEventFailedException extends Exception {}
+class CRM_Mandrill_WebhookInvalid extends Exception {}

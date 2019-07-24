@@ -162,3 +162,11 @@ function mandrill_civicrm_alterMailParams(&$params, $context) {
    ⬦ $params['attachments'] = (array)
    */
 }
+/**
+ * Implementation of hook_civicrm_idsException().
+ *
+ * Prevent webhook data form from being processed by the IDS
+ */
+function mandrill_civicrm_idsException(&$skip) {
+  $skip[] = 'civicrm/mandrill/webhook';
+}
