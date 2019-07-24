@@ -1,10 +1,10 @@
 <?php
 return [
-  'mailgun_api_key' => [
+  'mandrill_api_key' => [
     'group_name'  => 'domain',
-    'name'        => 'mailgun_api_key',
-    'title'       => ts('Mailgun API key'),
-    'description' => ts('The Mailgun API key for the sending domain'),
+    'name'        => 'mandrill_api_secret',
+    'title'       => ts('Mandrill API secret'),
+    'description' => ts('The Mandrill API secret for the webhook'),
     'type'        => 'String',
     'add'         => '5.8',
     'html_type'   => 'text',

@@ -1,15 +1,15 @@
 <?php
 
-require_once 'mailgunny.civix.php';
-use CRM_Mailgunny_ExtensionUtil as E;
+require_once 'mandrill.civix.php';
+use CRM_Mandrill_ExtensionUtil as E;
 
 /**
  * Implements hook_civicrm_config().
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_config
  */
-function mailgunny_civicrm_config(&$config) {
-  _mailgunny_civix_civicrm_config($config);
+function mandrill_civicrm_config(&$config) {
+  _mandrill_civix_civicrm_config($config);
 }
 
 /**
@@ -17,8 +17,8 @@ function mailgunny_civicrm_config(&$config) {
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_xmlMenu
  */
-function mailgunny_civicrm_xmlMenu(&$files) {
-  _mailgunny_civix_civicrm_xmlMenu($files);
+function mandrill_civicrm_xmlMenu(&$files) {
+  _mandrill_civix_civicrm_xmlMenu($files);
 }
 
 /**
@@ -26,8 +26,8 @@ function mailgunny_civicrm_xmlMenu(&$files) {
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_install
  */
-function mailgunny_civicrm_install() {
-  _mailgunny_civix_civicrm_install();
+function mandrill_civicrm_install() {
+  _mandrill_civix_civicrm_install();
 }
 
 /**
@@ -35,8 +35,8 @@ function mailgunny_civicrm_install() {
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_postInstall
  */
-function mailgunny_civicrm_postInstall() {
-  _mailgunny_civix_civicrm_postInstall();
+function mandrill_civicrm_postInstall() {
+  _mandrill_civix_civicrm_postInstall();
 }
 
 /**
@@ -44,8 +44,8 @@ function mailgunny_civicrm_postInstall() {
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_uninstall
  */
-function mailgunny_civicrm_uninstall() {
-  _mailgunny_civix_civicrm_uninstall();
+function mandrill_civicrm_uninstall() {
+  _mandrill_civix_civicrm_uninstall();
 }
 
 /**
@@ -53,8 +53,8 @@ function mailgunny_civicrm_uninstall() {
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_enable
  */
-function mailgunny_civicrm_enable() {
-  _mailgunny_civix_civicrm_enable();
+function mandrill_civicrm_enable() {
+  _mandrill_civix_civicrm_enable();
 }
 
 /**
@@ -62,8 +62,8 @@ function mailgunny_civicrm_enable() {
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_disable
  */
-function mailgunny_civicrm_disable() {
-  _mailgunny_civix_civicrm_disable();
+function mandrill_civicrm_disable() {
+  _mandrill_civix_civicrm_disable();
 }
 
 /**
@@ -71,8 +71,8 @@ function mailgunny_civicrm_disable() {
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_upgrade
  */
-function mailgunny_civicrm_upgrade($op, CRM_Queue_Queue $queue = NULL) {
-  return _mailgunny_civix_civicrm_upgrade($op, $queue);
+function mandrill_civicrm_upgrade($op, CRM_Queue_Queue $queue = NULL) {
+  return _mandrill_civix_civicrm_upgrade($op, $queue);
 }
 
 /**
@@ -83,8 +83,8 @@ function mailgunny_civicrm_upgrade($op, CRM_Queue_Queue $queue = NULL) {
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_managed
  */
-function mailgunny_civicrm_managed(&$entities) {
-  _mailgunny_civix_civicrm_managed($entities);
+function mandrill_civicrm_managed(&$entities) {
+  _mandrill_civix_civicrm_managed($entities);
 }
 
 /**
@@ -96,8 +96,8 @@ function mailgunny_civicrm_managed(&$entities) {
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_caseTypes
  */
-function mailgunny_civicrm_caseTypes(&$caseTypes) {
-  _mailgunny_civix_civicrm_caseTypes($caseTypes);
+function mandrill_civicrm_caseTypes(&$caseTypes) {
+  _mandrill_civix_civicrm_caseTypes($caseTypes);
 }
 
 /**
@@ -110,8 +110,8 @@ function mailgunny_civicrm_caseTypes(&$caseTypes) {
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_angularModules
  */
-function mailgunny_civicrm_angularModules(&$angularModules) {
-  _mailgunny_civix_civicrm_angularModules($angularModules);
+function mandrill_civicrm_angularModules(&$angularModules) {
+  _mandrill_civix_civicrm_angularModules($angularModules);
 }
 
 /**
@@ -119,8 +119,8 @@ function mailgunny_civicrm_angularModules(&$angularModules) {
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_alterSettingsFolders
  */
-function mailgunny_civicrm_alterSettingsFolders(&$metaDataFolders = NULL) {
-  _mailgunny_civix_civicrm_alterSettingsFolders($metaDataFolders);
+function mandrill_civicrm_alterSettingsFolders(&$metaDataFolders = NULL) {
+  _mandrill_civix_civicrm_alterSettingsFolders($metaDataFolders);
 }
 
 /**
@@ -130,23 +130,23 @@ function mailgunny_civicrm_alterSettingsFolders(&$metaDataFolders = NULL) {
  *
  * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_entityTypes
  */
-function mailgunny_civicrm_entityTypes(&$entityTypes) {
-  _mailgunny_civix_civicrm_entityTypes($entityTypes);
+function mandrill_civicrm_entityTypes(&$entityTypes) {
+  _mandrill_civix_civicrm_entityTypes($entityTypes);
 }
 
 /**
- * Try to embed VERP data in a way that Mailgun will provide to webhooks.
+ * Try to embed VERP data in a way that Mandrill will provide to webhooks.
  *
  * Implements hook_civicrm_alterMailParams(&$params, $context)
  */
-function mailgunny_civicrm_alterMailParams(&$params, $context) {
+function mandrill_civicrm_alterMailParams(&$params, $context) {
   if (isset($params['X-CiviMail-Bounce'])) {
-    // Copy this header to one that will be returned by Mailgun's webhook.
-    $params['X-Mailgun-Variables'] = json_encode(['civimail-bounce' => $params['X-CiviMail-Bounce']]);
+    // Copy this header to one that will be returned by Mandrill's webhook.
+    $params['X-Mandrill-Variables'] = json_encode(['civimail-bounce' => $params['X-CiviMail-Bounce']]);
   }
   elseif (isset($params['Return-Path'])) {
-    // Copy this header to one that will be returned by Mailgun's webhook.
-    $params['X-Mailgun-Variables'] = json_encode(['civimail-bounce' => $params['Return-Path']]);
+    // Copy this header to one that will be returned by Mandrill's webhook.
+    $params['X-Mandrill-Variables'] = json_encode(['civimail-bounce' => $params['Return-Path']]);
   }
   /*
  ⬦ $context = (string [10]) `flexmailer`

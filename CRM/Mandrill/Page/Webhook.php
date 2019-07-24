@@ -1,20 +1,20 @@
 <?php
-use CRM_Mailgunny_ExtensionUtil as E;
+use CRM_Mandrill_ExtensionUtil as E;
 
-class CRM_Mailgunny_Page_Webhook extends CRM_Core_Page {
+class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
   public function run() {
     try {
       $event = $this->validateInput(file_get_contents('php://input'));
       $this->processEvent($event);
-      Civi::log()->info("Mailgun Webhook successfully processed");
+      Civi::log()->info("Mandrill Webhook successfully processed");
     }
-    catch (CRM_Mailgunny_WebhookRejectedException $e) {
-      Civi::log()->notice("Mailgun Webhook ignored (returning 406)", ['message' => $e->getMessage()]);
+    catch (CRM_Mandrill_WebhookRejectedException $e) {
+      Civi::log()->notice("Mandrill Webhook ignored (returning 406)", ['message' => $e->getMessage()]);
       header("$_SERVER[SERVER_PROTOCOL] 406 " . $e->getMessage());
       echo json_encode(['error' => $e->getMessage()]);
     }
     catch (\Exception $e) {
-      Civi::log()->notice("Mailgun Webhook fatal (returning 500)", ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+      Civi::log()->notice("Mandrill Webhook fatal (returning 500)", ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
       header("$_SERVER[SERVER_PROTOCOL] 500");
     }
      CRM_Utils_System::civiExit();
@@ -26,10 +26,10 @@ class CRM_Mailgunny_Page_Webhook extends CRM_Core_Page {
    * @return StdClass
    */
   public function validateInput($input) {
-    Civi::log()->info("Mailgun Webhook received. Raw input stored as context.", ['raw' => $input]);
+    Civi::log()->info("Mandrill Webhook received. Raw input stored as context.", ['raw' => $input]);
     $input = json_decode($input);
     if (!$input) {
-      throw new CRM_Mailgunny_WebhookRejectedException("Expected JSON but didn't get it.");
+      throw new CRM_Mandrill_WebhookRejectedException("Expected JSON but didn't get it.");
     }
     $sig = $input->signature->signature ?? 'MISSING SIGNATURE';
 
@@ -37,28 +37,28 @@ class CRM_Mailgunny_Page_Webhook extends CRM_Core_Page {
     /*
     // Ensure webhooks recieved promptly - disable for testing.
     if (abs(time() - $timestamp) > 15) {
-      throw new CRM_Mailgunny_WebhookRejectedException("Event too old.");
+      throw new CRM_Mandrill_WebhookRejectedException("Event too old.");
     }
     */
     $_ = $timestamp . ($input->signature->token ?? '');
     $secret = $this->getApiKey();
     if ($sig !==  hash_hmac('sha256', $_, $secret)) {
-      throw new CRM_Mailgunny_WebhookRejectedException("Invalid signature");
+      throw new CRM_Mandrill_WebhookRejectedException("Invalid signature");
     }
     if (empty($input->{'event-data'})) {
-      throw new CRM_Mailgunny_WebhookRejectedException("Missing event-data");
+      throw new CRM_Mandrill_WebhookRejectedException("Missing event-data");
     }
     // OK, looks valid.
     return $input->{'event-data'};
   }
 
   /**
-   * Get API key from Mailgun account.
+   * Get API key from Mandrill account.
    *
    * @return string
    */
   public function getApiKey() {
-    return Civi::settings()->get('mailgun_api_key');
+    return Civi::settings()->get('mandrill_api_key');
   }
 
   /**
@@ -85,10 +85,10 @@ class CRM_Mailgunny_Page_Webhook extends CRM_Core_Page {
     case 'unsubscribed':
     case 'complained':
     case 'stored':
-      throw new CRM_Mailgunny_WebhookRejectedException("$event->event is not handled by this webhook.");
+      throw new CRM_Mandrill_WebhookRejectedException("$event->event is not handled by this webhook.");
 
     default:
-      throw new CRM_Mailgunny_WebhookRejectedException("Unrecognised webhook event type is not handled by this webhook.");
+      throw new CRM_Mandrill_WebhookRejectedException("Unrecognised webhook event type is not handled by this webhook.");
     }
   }
 
@@ -99,17 +99,17 @@ class CRM_Mailgunny_Page_Webhook extends CRM_Core_Page {
     $this->processCommonBounce($event, 'Syntax');
   }
   public function processCommonBounce($event, $type) {
-    Civi::log()->info("Mailgun Webhook processing bounce: $type");
+    Civi::log()->info("Mandrill Webhook processing bounce: $type");
     // Ideally we would have access to 'X-CiviMail-Bounce' but I don't think we do.
     $bounce_params = $this->extractVerpData($event);
     if (!$bounce_params) {
-      throw new CRM_Mailgunny_WebhookRejectedException("Cannot find VERP data necessary to process bounce.");
+      throw new CRM_Mandrill_WebhookRejectedException("Cannot find VERP data necessary to process bounce.");
     }
     $bounce_params['bounce_type_id'] = $this->getCiviBounceTypeId($type);
     $bounce_params['bounce_reason'] = ($event->{'delivery-status'}->description ?? '')
       . " "
       . ($event->{'delivery-status'}->message ?? '')
-      . " Mailgun Event Id: " . ($event->id ?? '');
+      . " Mandrill Event Id: " . ($event->id ?? '');
     $bounced = CRM_Mailing_Event_BAO_Bounce::create($bounce_params);
   }
   /**

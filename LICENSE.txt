@@ -1,4 +1,4 @@
-Package: mailgunny
+Package: mandrill
 Copyright (C) 2018, Rich Lott <forums@artfulrobot.uk>
 Licensed under the GNU Affero Public License 3.0 (below).
 
