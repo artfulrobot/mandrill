@@ -5,6 +5,7 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
   public function run() {
     try {
       $events = $this->validateInput($_POST);
+      Civi::log()->info("Mandrill Webhook data", ['data' => serialize($_POST)]);
       foreach ($events as $event) {
         try {
           $this->processEvent($event);
@@ -19,13 +20,6 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
       // Signature mismatch etc.
       Civi::log()->error("Mandrill Webhook not processed: " . $e->getMessage(), []);
     }
-    /*
-    catch (CRM_Mandrill_WebhookRejectedException $e) {
-      Civi::log()->notice("Mandrill Webhook ignored (returning 406)", ['message' => $e->getMessage()]);
-      header("$_SERVER[SERVER_PROTOCOL] 406 " . $e->getMessage());
-      echo json_encode(['error' => $e->getMessage()]);
-    }
-     */
     catch (\Exception $e) {
       Civi::log()->notice("Mandrill Webhook fatal (returning 500)", ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
       header("$_SERVER[SERVER_PROTOCOL] 500 Server Error");
@@ -122,18 +116,19 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
   }
   public function processCommonBounce($event, $type) {
     Civi::log()->info("Mandrill Webhook processing bounce: $type");
-    // Ideally we would have access to 'X-CiviMail-Bounce' but I don't think we do.
     $bounce_params = $this->extractVerpData($event);
     if (!$bounce_params) {
       throw new CRM_Mandrill_WebhookEventFailedException("Cannot find VERP data necessary to process bounce.");
     }
     $bounce_params['bounce_type_id'] = $this->getCiviBounceTypeId($type);
-    /*$bounce_params['bounce_reason'] = ($event->{'delivery-status'}->description ?? '')
+    $bounce_params['bounce_reason'] =
+      ($event['msg']['bounce_description'] ?? '')
       . " "
-      . ($event->{'delivery-status'}->message ?? '')
-      . " Mandrill Event Id: " . ($event->id ?? '');
-     */
-    //$bounced = CRM_Mailing_Event_BAO_Bounce::create($bounce_params);
+      . ($event['msg']['diag'] ?? '')
+      . " "
+      . "Mandrill Id: " . ($event['_id'] ?? '');
+    Civi::log()->info("Mandrill Webhook processing bounce params ", $bounce_params);
+    $bounced = CRM_Mailing_Event_BAO_Bounce::create($bounce_params);
   }
   /**
    * Extract data from verp data if we can.
