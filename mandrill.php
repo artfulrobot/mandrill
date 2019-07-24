@@ -140,13 +140,20 @@ function mandrill_civicrm_entityTypes(&$entityTypes) {
  * Implements hook_civicrm_alterMailParams(&$params, $context)
  */
 function mandrill_civicrm_alterMailParams(&$params, $context) {
-  if (isset($params['X-CiviMail-Bounce'])) {
-    // Copy this header to one that will be returned by Mandrill's webhook.
-    $params['X-Mandrill-Variables'] = json_encode(['civimail-bounce' => $params['X-CiviMail-Bounce']]);
+  if (in_array($context, ['civimail', 'flexmailer'])) {
+    if (!empty($params['Return-Path'])) {
+      // Copy this header to one that will be returned by Mandrill's webhook.
+      $params['headers']['X-MC-Metadata'] = json_encode(['civiverp' => $params['Return-Path']]);
+    }
+    elseif (!empty($params['X-CiviMail-Bounce'])) {
+      $params['headers']['X-MC-Metadata'] = json_encode(['civiverp' => $params['X-CiviMail-Bounce']]);
+    }
   }
-  elseif (isset($params['Return-Path'])) {
-    // Copy this header to one that will be returned by Mandrill's webhook.
-    $params['X-Mandrill-Variables'] = json_encode(['civimail-bounce' => $params['Return-Path']]);
+  else {
+    // example case:
+    // context === 'singleEmail'
+    // $params[groupName] == 'Activity Email Sender'
+    $params['headers']['X-MC-Metadata'] = '{ "singleEmail": "1" }';
   }
   /*
  ⬦ $context = (string [10]) `flexmailer`

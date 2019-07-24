@@ -114,15 +114,6 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
     }
   }
 
-  /**
-   * Get API key from Mandrill account.
-   *
-   * @return string
-   */
-  public function getApiKey() {
-    return Civi::settings()->get('mandrill_webhook_key');
-  }
-
   public function processPermanentBounce($event) {
     $this->processCommonBounce($event, 'Invalid');
   }
@@ -148,30 +139,24 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
    * Extract data from verp data if we can.
    *
    * @param string $data e.g. 'b.22.23.1bc42342342@example.com'
-   * @return array with keys: job_id, event_queue_id, hash
+   * @return array with keys: job_id, event_queue_id, hash (or NULL)
    */
   public function extractVerpData($event) {
-    return; // xxx
-
-    if (!empty($event->{'user-variables'}->{'civimail-bounce'})) {
+    if (!empty($event['msg']['metadata']['civiverp'])) {
       // Great, we found the header we added in our hook_civicrm_alterMailParams.
-      $data = $event->{'user-variables'}->{'civimail-bounce'};
+      $data = $event['msg']['metadata']['civiverp'];
+
+      // Credit goes to https://github.com/mecachisenros for the verp parsing:
+      $verp_separator = Civi::settings()->get('verpSeparator');
+      $localpart = CRM_Core_BAO_MailSettings::defaultLocalpart();
+      $parts = explode($verp_separator, substr(substr($data, 0, strpos($data, '@')), strlen($localpart) + 2));
+
+      $verp_items = (count($parts) === 3)
+        ? array_combine(['job_id', 'event_queue_id', 'hash'], $parts)
+        : [];
+
+      return $verp_items;
     }
-    elseif (!empty($event->envelope->sender)) {
-      // Hmmm. See if the envelope sender has anything useful in it.
-      $data = $event->envelope->sender;
-    }
-
-    // Credit goes to https://github.com/mecachisenros for the verp parsing:
-    $verp_separator = Civi::settings()->get('verpSeparator');
-		$localpart = CRM_Core_BAO_MailSettings::defaultLocalpart();
-    $parts = explode($verp_separator, substr(substr($data, 0, strpos($data, '@')), strlen($localpart) + 2));
-
-    $verp_items = (count($parts) === 3)
-      ? array_combine(['job_id', 'event_queue_id', 'hash'], $parts)
-      : [];
-
-    return $verp_items;
   }
 
   /**
