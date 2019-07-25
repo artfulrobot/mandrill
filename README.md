@@ -134,7 +134,8 @@ of the HTML. This caused me disk space issues and MySQL performance issues as
 the activities table grew to 50GB!
 
 This extension does not create any activities. Note that core CiviMail creates
-one activity per mailing, shared with all the recipient contacts.
+one activity per mailing, shared with all the recipient contacts. Because this
+extension does less work per email, it should help speed up sending emails.
 
 The MTE extension provides open/click data (in the form of activities) on all
 emails, including transactional. The use of this is fairly limited (the
@@ -144,6 +145,13 @@ transactional mail, it's there for you.
 
 For all the above reasons I decided it would be better to write a new extension,
 so this was born.
+
+### Moving from MTE to this extension?
+
+If you don't need the functionality of MTE outlined above and just want to use
+Mandrill for delivering all your email, it should be safe to disable the MTE
+extension and then install this one. This extension will accept webhook data
+that MTE accepted, so existing bulk mailings' bounces should still be processed.
 
 ## How this extension works (technical overview)
 
