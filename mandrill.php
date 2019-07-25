@@ -138,36 +138,43 @@ function mandrill_civicrm_entityTypes(&$entityTypes) {
  * Try to embed VERP data in a way that Mandrill will provide to webhooks.
  *
  * Implements hook_civicrm_alterMailParams(&$params, $context)
+ *
+ * @param array &$params
+ * @param string $context Known possible values: civimail|flexmailer|singleEmail
+ *
+ * @return NULL
  */
 function mandrill_civicrm_alterMailParams(&$params, $context) {
+
   if (in_array($context, ['civimail', 'flexmailer'])) {
+    $verp = '';
     if (!empty($params['Return-Path'])) {
-      // Copy this header to one that will be returned by Mandrill's webhook.
-      $params['headers']['X-MC-Metadata'] = json_encode(['civiverp' => $params['Return-Path']]);
+      $verp = $params['Return-Path'];
     }
     elseif (!empty($params['X-CiviMail-Bounce'])) {
-      $params['headers']['X-MC-Metadata'] = json_encode(['civiverp' => $params['X-CiviMail-Bounce']]);
+      $verp = $params['X-CiviMail-Bounce'];
+    }
+    if ($verp) {
+      // Copy the useful parts of this header to one that will be returned by
+      // Mandrill's webhook. Nb. Mandrill has a 200 character limit for the
+      // metadata so it makes sense to keep this to a minimum size.
+      //
+      // See CRM_Mailing_BAO_Mailing::getVerpAndUrlsAndHeaders()
+      // for how the VERP is constructed.
+      //
+      // We trim down the data to the bits we really need.
+      // ...Strip @domain from end.
+      $verp = preg_replace('/@.+$/', '', $verp);
+      // ... remove the first item (which is our local prefix + verp token)
+      $sep = Civi::settings()->get('verpSeparator');
+      $parts = explode($sep, $verp);
+      array_shift($parts);
+      // ... recombine.
+      $verp = implode($sep, $parts);
+
+      $params['headers']['X-MC-Metadata'] = json_encode(['civiverp' => $verp]);
     }
   }
-  else {
-    // example case:
-    // context === 'singleEmail'
-    // $params[groupName] == 'Activity Email Sender'
-    $params['headers']['X-MC-Metadata'] = '{ "singleEmail": "1" }';
-  }
-  /*
- ⬦ $context = (string [10]) `flexmailer`
-   ⬦ $params['X-CiviMail-Mosaico'] = (string [3]) `Yes`
-   ⬦ $params['List-Unsubscribe'] = (string [52]) `<mailto:u.72.32.fa5f74c72c53c77f@crm.artfulrobot.uk>`
-   ⬦ $params['Precedence'] = (string [4]) `bulk`
-   ⬦ $params['job_id'] = (string [2]) `72`
-   ⬦ $params['From'] = (string [37]) `"Artful Robot" <hello@artfulrobot.uk>`
-   ⬦ $params['toEmail'] = (string [20]) `hello@artfulrobot.uk`
-   ⬦ $params['toName'] = (string [12]) `Artful Robot`
-   ⬦ $params['Return-Path'] = (string [43]) `b.72.32.fa5f74c72c53c77f@crm.artfulrobot.uk`
-   ⬦ $params['X-CiviMail-Bounce'] = (string [43]) `b.72.32.fa5f74c72c53c77f@crm.artfulrobot.uk`
-   ⬦ $params['attachments'] = (array)
-   */
 }
 /**
  * Implementation of hook_civicrm_idsException().

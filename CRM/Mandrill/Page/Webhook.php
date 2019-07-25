@@ -2,17 +2,22 @@
 use CRM_Mandrill_ExtensionUtil as E;
 
 class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
+  /**
+   * @var array keys are names like Invalid; values are IDs
+   */
+  public static $cached_bounce_types = [];
   public function run() {
     try {
       $events = $this->validateInput($_POST);
       Civi::log()->info("Mandrill Webhook data", ['data' => serialize($_POST)]);
       foreach ($events as $event) {
+        $debugging_info = $this->getSimplifiedEventData($event);
         try {
           $this->processEvent($event);
-          Civi::log()->info("Mandrill Webhook event successfully processed", ['event' => $event]);
+          Civi::log()->info("Mandrill Webhook event successfully processed", $debugging_info);
         }
         catch (CRM_Mandrill_WebhookEventFailedException $e) {
-          Civi::log()->error("Mandrill Webhook event not processed: " . $e->getMessage(), ['event' => $event]);
+          Civi::log()->error("Mandrill Webhook event not processed: " . $e->getMessage(), $debugging_info);
         }
       }
     }
@@ -25,6 +30,17 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
       header("$_SERVER[SERVER_PROTOCOL] 500 Server Error");
     }
     CRM_Utils_System::civiExit();
+  }
+  public function getSimplifiedEventData($event) {
+    $data = [
+      'type'     => $event['event'] ?? '(none)',
+      'email'    => $event['msg']['email'] ?? '(none)',
+      'subject'  => $event['msg']['subject'] ?? '(none)',
+      'id'       => $event['msg']['_id'] ?? '(none)',
+      'time'     => $event['msg']['_ts'] ?? '(none)',
+      'metadata' => $event['msg']['metadata'] ?? '(none)',
+    ];
+    return $data;
   }
   /**
    * Check input and return the event data if all ok.
@@ -67,11 +83,16 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
     }
     return $events;
   }
-  /*
+  /**
    * Generates a base64-encoded signature for a Mandrill webhook request.
+   *
+   * (code taken from Mandrill website)
+   *
    * @param string $webhook_key the webhook's authentication key
    * @param string $url the webhook url
    * @param array $params the request's POST parameters
+   *
+   * @return String
    */
   function generateSignature($webhook_key, $url, $params) {
     $signed_data = $url;
@@ -90,68 +111,96 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
   public function processEvent($event) {
     switch ($event['event']){
     case 'hard_bounce':
-      $this->processPermanentBounce($event);
+      $reason = $this->getBounceReason($event);
+      $this->processCommonBounce($event, 'Invalid', $reason);
       break;
     case 'soft_bounce':
-      $this->processTemporaryBounce($event);
+      $reason = $this->getBounceReason($event);
+      $this->processCommonBounce($event, 'Syntax', $reason);
+      break;
+
+    case 'reject':
+      // https://mandrill.zendesk.com/hc/en-us/articles/205582957-What-is-a-rejected-email-Rejection-Blacklist-
+      $reason = 'Rejected by Mandrill (because of a previous hard bounce)';
+      $this->processCommonBounce($event, 'Invalid', $reason);
       break;
 
     case 'send':
     case 'deferral':
     case 'unsub':
-    case 'reject':
     case 'spam':
     case 'open':
     case 'click':
     default:
-      throw new CRM_Mandrill_WebhookEventFailedException("Ignored '$event[event]' type event.");
+      throw new CRM_Mandrill_WebhookEventFailedException("Ignored '$event[event]' type event. Consider reconfiguring your webhook not to send these as it wastes resources.");
     }
   }
-
-  public function processPermanentBounce($event) {
-    $this->processCommonBounce($event, 'Invalid');
+  /**
+   * Extract human readable reason for bounces.
+   *
+   * @return String
+   */
+  public function getBounceReason($event) {
+    return
+        ($event['msg']['bounce_description'] ?? '')
+        . " "
+        . ($event['msg']['diag'] ?? '')
+        . " "
+        . "Mandrill Id: " . ($event['_id'] ?? '');
   }
-  public function processTemporaryBounce($event) {
-    $this->processCommonBounce($event, 'Syntax');
-  }
-  public function processCommonBounce($event, $type) {
-    Civi::log()->info("Mandrill Webhook processing bounce: $type");
+  public function processCommonBounce($event, $type, $reason) {
+    Civi::log()->info("Mandrill Webhook processing bounce (CiviCRM bounce type '$type')");
     $bounce_params = $this->extractVerpData($event);
     if (!$bounce_params) {
       throw new CRM_Mandrill_WebhookEventFailedException("Cannot find VERP data necessary to process bounce.");
     }
     $bounce_params['bounce_type_id'] = $this->getCiviBounceTypeId($type);
-    $bounce_params['bounce_reason'] =
-      ($event['msg']['bounce_description'] ?? '')
-      . " "
-      . ($event['msg']['diag'] ?? '')
-      . " "
-      . "Mandrill Id: " . ($event['_id'] ?? '');
+    $bounce_params['bounce_reason'] = $reason;
     Civi::log()->info("Mandrill Webhook processing bounce params ", $bounce_params);
     $bounced = CRM_Mailing_Event_BAO_Bounce::create($bounce_params);
+    // We could bother to update the timestamp here? @todo
   }
   /**
    * Extract data from verp data if we can.
+   *
+   * First we look for data we created, under the key 'civiverp'
+   * If that's not found we look for data from the MTE extension 'CiviCRM_Mandrill_id'
+   * => 1494444.m.62.2456554.5dd4b6b7b1bf2b30
    *
    * @param string $data e.g. 'b.22.23.1bc42342342@example.com'
    * @return array with keys: job_id, event_queue_id, hash (or NULL)
    */
   public function extractVerpData($event) {
-    if (!empty($event['msg']['metadata']['civiverp'])) {
-      // Great, we found the header we added in our hook_civicrm_alterMailParams.
-      $data = $event['msg']['metadata']['civiverp'];
 
-      // Credit goes to https://github.com/mecachisenros for the verp parsing:
-      $verp_separator = Civi::settings()->get('verpSeparator');
-      $localpart = CRM_Core_BAO_MailSettings::defaultLocalpart();
-      $parts = explode($verp_separator, substr(substr($data, 0, strpos($data, '@')), strlen($localpart) + 2));
-
-      $verp_items = (count($parts) === 3)
-        ? array_combine(['job_id', 'event_queue_id', 'hash'], $parts)
-        : [];
-
-      return $verp_items;
+    // Extract metadata from civiverp or CiviCRM_Mandrill_id
+    $data = NULL;
+    foreach (['civiverp', 'CiviCRM_Mandrill_id'] as $creator) {
+      if (!empty($event['msg']['metadata'][$creator])) {
+        $data = $event['msg']['metadata'][$creator];
+        break;
+      }
     }
+
+    if (!$data) {
+      // No data for us to consider.
+      return;
+    }
+
+    $parts = explode(Civi::settings()->get('verpSeparator'), $data);
+    $parts_count = count($parts);
+
+    if ($creator === 'CiviCRM_Mandrill_id' && $parts_count === 5) {
+      // The MTE extension also prepends an activity ID to the start of
+      // CiviCRM's normal VERP data, so we remove that first.
+      // We don't care about the 'verp token' which is also inlcuded here.
+      $parts = array_slice($parts, 2);
+    }
+
+    $verp_items = ($parts_count === 3)
+      ? array_combine(['job_id', 'event_queue_id', 'hash'], $parts)
+      : [];
+
+    return $verp_items;
   }
 
   /**
@@ -161,10 +210,13 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
    * @return int Bounce type ID
    */
   protected function getCiviBounceTypeId($name) {
-    $bounce_type = new CRM_Mailing_DAO_BounceType();
-    $bounce_type->name = $name;
-    $bounce_type->find(TRUE);
-    return $bounce_type->id;
+    if (!isset(static::$cached_bounce_types[$name])) {
+      $bounce_type = new CRM_Mailing_DAO_BounceType();
+      $bounce_type->name = $name;
+      $bounce_type->find(TRUE);
+      static::$cached_bounce_types[$name] = $bounce_type->id;
+    }
+    return static::$cached_bounce_types[$name];
   }
 }
 class CRM_Mandrill_WebhookEventFailedException extends Exception {}
