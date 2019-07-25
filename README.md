@@ -46,8 +46,14 @@ cv en mandrill
 
 Log in to mandrill's website and find the Webhooks page.
 
-Create a webhook and configure it to respond to **hard_bounce** and
-**soft_bounce** events.  The webhook URL for your site, will look like:
+Create a webhook and configure it to respond to these events.
+
+- `hard_bounce`
+- `soft_bounce`
+- `reject` (this is what Mandrill sends when a previous attempt at mailing that
+    email received a hard bounce)
+
+The webhook URL for your site, will look like:
 
 - Drupal 7: `https://example.com/civicrm/mandrill/webhook`
 - Wordpress: `https://example.com/?page=CiviCRM&q=civicrm/mandrill/webhook`
