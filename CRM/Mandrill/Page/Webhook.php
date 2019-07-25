@@ -114,6 +114,7 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
       $reason = $this->getBounceReason($event);
       $this->processCommonBounce($event, 'Invalid', $reason);
       break;
+
     case 'soft_bounce':
       $reason = $this->getBounceReason($event);
       $this->processCommonBounce($event, 'Syntax', $reason);
@@ -157,17 +158,28 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
     $bounce_params['bounce_type_id'] = $this->getCiviBounceTypeId($type);
     $bounce_params['bounce_reason'] = $reason;
     Civi::log()->info("Mandrill Webhook processing bounce params ", $bounce_params);
+
+    // Note: it is not possible to set the correct timestamp for the bounce, so
+    // it's just recorded as the current time (i.e. the time the webhook fired,
+    // which might be up to an hour after the actual bounce).
     $bounced = CRM_Mailing_Event_BAO_Bounce::create($bounce_params);
-    // We could bother to update the timestamp here? @todo
+    if (!$bounced) {
+      Civi::log()->warning("Mandrill Webhook failed to create bounce. Perhaps an entity was deleted, or something?");
+    }
   }
   /**
    * Extract data from verp data if we can.
    *
    * First we look for data we created, under the key 'civiverp'
    * If that's not found we look for data from the MTE extension 'CiviCRM_Mandrill_id'
-   * => 1494444.m.62.2456554.5dd4b6b7b1bf2b30
    *
-   * @param string $data e.g. 'b.22.23.1bc42342342@example.com'
+   * Note metadata we created looks like (assuming . for verp separator)
+   *     <job_id>.<event_queue_id>.<hash>
+   *
+   * And metadata created by MTE looks like:
+   *     <other_id>.<prefix_and_verp_token>.<job_id>.<event_queue_id>.<hash>
+   *
+   * @param string $data e.g. 'prefixb.22.23.1bc42342342@example.com'
    * @return array with keys: job_id, event_queue_id, hash (or NULL)
    */
   public function extractVerpData($event) {
@@ -187,16 +199,15 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
     }
 
     $parts = explode(Civi::settings()->get('verpSeparator'), $data);
-    $parts_count = count($parts);
 
-    if ($creator === 'CiviCRM_Mandrill_id' && $parts_count === 5) {
+    if ($creator === 'CiviCRM_Mandrill_id' && count($parts) === 5) {
       // The MTE extension also prepends an activity ID to the start of
       // CiviCRM's normal VERP data, so we remove that first.
       // We don't care about the 'verp token' which is also inlcuded here.
       $parts = array_slice($parts, 2);
     }
 
-    $verp_items = ($parts_count === 3)
+    $verp_items = (count($parts) === 3)
       ? array_combine(['job_id', 'event_queue_id', 'hash'], $parts)
       : [];
 
