@@ -164,15 +164,22 @@ function mandrill_civicrm_alterMailParams(&$params, $context) {
       //
       // We trim down the data to the bits we really need.
       // ...Strip @domain from end.
-      $verp = preg_replace('/@.+$/', '', $verp);
-      // ... remove the first item (which is our local prefix + verp token)
+      $mandrill_metadata = preg_replace('/@.+$/', '', $verp);
       $sep = Civi::settings()->get('verpSeparator');
-      $parts = explode($sep, $verp);
-      array_shift($parts);
-      // ... recombine.
-      $verp = implode($sep, $parts);
-
-      $params['headers']['X-MC-Metadata'] = json_encode(['civiverp' => $verp]);
+      $parts = explode($sep, $mandrill_metadata);
+      if (count($parts) !== 4) {
+        Civi::log()->warning(
+          __FUNCTION__ . " failed to extract verp data from {verp} in maling to {to}. Bounce handling may not work",
+          ['verp' => $verp, 'to' => $params['emailTo'] ?? 'unset']);
+      }
+      else {
+        // ... remove the first item (which is our local prefix + verp token)
+        array_shift($parts);
+        // ... recombine.
+        $mandrill_metadata = implode($sep, $parts);
+        // Add the header for Mandrill.
+        $params['headers']['X-MC-Metadata'] = json_encode(['civiverp' => $mandrill_metadata]);
+      }
     }
   }
 }
