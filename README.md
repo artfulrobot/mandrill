@@ -53,6 +53,7 @@ Create a webhook and configure it to respond to these events.
 - `soft_bounce` (e.g. mailbox full)
 - `reject` (this is what Mandrill sends when a previous attempt at mailing that
     email received a hard bounce)
+- `spam` (user marks your message as spam - *how dare they!*)
 
 The webhook URL for your site, will look like:
 

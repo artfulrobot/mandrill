@@ -126,10 +126,14 @@ class CRM_Mandrill_Page_Webhook extends CRM_Core_Page {
       $this->processCommonBounce($event, 'Invalid', $reason);
       break;
 
+    case 'spam':
+      $reason = 'Recipient reported message as spam';
+      $this->processCommonBounce($event, 'Spam', $reason);
+      break;
+
     case 'send':
     case 'deferral':
     case 'unsub':
-    case 'spam':
     case 'open':
     case 'click':
     default:
