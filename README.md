@@ -104,7 +104,8 @@ Right, you're all set. Do some more testing:
 
 This extension focusses on simplicity; all it really does is make sure bounces
 are handled when using Mandrill. It leaves click and open recording to CiviCRM
-- which seems to do a pretty good job.
+- which seems to do a pretty good job and this extension does not do anything
+for transactional mail. 
 
 The [MTE - Mandrill Transactional
 Emails](https://github.com/JMAConsulting/biz.jmaconsulting.mte/) extension
@@ -123,8 +124,8 @@ solution.
 If you're looking to store copies of transactional emails (e.g. contribution
 receipt emails) then you could try the [transactional
 emails](https://civicrm.org/extensions/transactional-emails) extension. (I have
-not tested using that extension alongside this one, please let me know if it
-works!)
+not tested using that extension alongside this one, I suspect there might be some
+tweaks needed to avoid a race condition, ask me on the issue queue if interested)
 
 The MTE extension creates several activities for each recipient each with a full
 copy of the email.  If you email 10,000 people that's 10,000 'Mandrill Sent'
@@ -136,7 +137,8 @@ the activities table grew to 50GB!
 
 This extension does not create any activities. Note that core CiviMail creates
 one activity per mailing, shared with all the recipient contacts. Because this
-extension does less work per email, it should help speed up sending emails.
+extension does less work per email, it means your emails send fasster (my tests
+show 25% - 36% faster on mailings to 4,000 and 39,000 contacts respectively).
 
 The MTE extension provides open/click data (in the form of activities) on all
 emails, including transactional. The use of this is fairly limited (the
@@ -153,6 +155,9 @@ If you don't need the functionality of MTE outlined above and just want to use
 Mandrill for delivering all your email, it should be safe to disable the MTE
 extension and then install this one. This extension will accept webhook data
 that MTE accepted, so existing bulk mailings' bounces should still be processed.
+Note that when/if you uninstall MTE it will delete all the MTE-specific data
+like transactional email activities and activity-based click/open rates (although
+those are still in CiviMail for CiviMail-sent mailings).
 
 ## How this extension works (technical overview)
 
