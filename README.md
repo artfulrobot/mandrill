@@ -102,9 +102,9 @@ Right, you're all set. Do some more testing:
 ## How does this extension differ from the MTE extension?
 
 This extension focusses on simplicity; all it really does is make sure bounces
-are handled when using Mandrill. It leaves click and open recording to CiviCRM
-- which seems to do a pretty good job and this extension does not do anything
-for transactional mail. 
+are handled when using Mandrill. It leaves click and open recording to CiviCRM,
+which seems to do a pretty good job and this extension does not do anything
+for transactional mail.
 
 The [MTE - Mandrill Transactional
 Emails](https://github.com/JMAConsulting/biz.jmaconsulting.mte/) extension
