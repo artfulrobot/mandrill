@@ -191,3 +191,11 @@ function mandrill_civicrm_alterMailParams(&$params, $context) {
 function mandrill_civicrm_idsException(&$skip) {
   $skip[] = 'civicrm/mandrill/webhook';
 }
+function mandrill_civicrm_navigationMenu(&$menu) {
+  _mandrill_civix_insert_navigation_menu($menu, 'Administer/System Settings', [
+    'label' => E::ts('Mandrill Extension Settings'),
+    'name' => 'mandrill-settings',
+    'url' => 'civicrm/admin/setting/mandrill',
+    'permission' => 'administer CiviCRM',
+  ]);
+}

@@ -7,9 +7,11 @@
     <access_arguments>*always allow*</access_arguments>
   </item>
   <item>
-    <path>civicrm/mandrill/settings</path>
+    <path>civicrm/admin/setting/mandrill</path>
     <page_callback>CRM_Mandrill_Form_Settings</page_callback>
-    <title>Settings</title>
-    <access_arguments>access CiviCRM</access_arguments>
+    <title>Mandrill Extension Settings</title>
+    <access_arguments>administer CiviCRM</access_arguments>
+    <desc>Specify your Mandrill webhook key - required for bounce handling</desc>
+    <adminGroup>System Settings</adminGroup>
   </item>
 </menu>

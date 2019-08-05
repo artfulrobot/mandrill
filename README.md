@@ -43,11 +43,19 @@ cv en mandrill
 
 ## Usage
 
+You'll need to have completed the installation (above) before you follow these
+steps.
+
+Open Mandrill's admin website in one tab, and in another open this extension's
+settings page **Administer » System Settings » Mandrill Extension Settings**
+
+
 ### Step 1: configure your webhooks at Mandrill
 
 Log in to Mandrill's website and find the Webhooks page.
 
-Create a webhook and configure it to respond to these events.
+Create a webhook using the URL provided on your CiviCRM Mandrill Extension
+Settings page, and configure it to respond to these events.
 
 - `hard_bounce` (e.g. mailbox does not exist)
 - `soft_bounce` (e.g. mailbox full)
@@ -55,30 +63,19 @@ Create a webhook and configure it to respond to these events.
     email received a hard bounce)
 - `spam` (user marks your message as spam - *how dare they!*)
 
-The webhook URL for your site, will look like:
-
-- Drupal 7: `https://example.com/civicrm/mandrill/webhook`
-- Wordpress: `https://example.com/?page=CiviCRM&q=civicrm/mandrill/webhook`
-- Joomla: `https://example.com/index.php?option=com_civicrm&task=civicrm/mandrill/webhook`
-
 ### Step 2: enter your Mandrill webhook key in CiviCRM
 
 Nb. the API key is *not* your Mandrill account password, nor your domain's SMTP/API
 key/password. You can find it on the Mandrill webhooks page.
 
-Once you've got it, visit the settings page at:
-
-- Drupal 7: `https://example.com/civicrm/mandrill/settings`
-- Wordpress: `https://example.com/?page=CiviCRM&q=civicrm/mandrill/settings`
-- Joomla: `https://example.com/index.php?option=com_civicrm&task=civicrm/mandrill/settings`
-
-Put it in the box and press Save.
+Once you've got it, paste it into your CiviCRM Mandrill Extension Settings page
+and hit save.
 
 ### Step 3: enter your Mandrill SMTP settings
 
 Put these in the usual place:
 
-*Administer* » *System Settings* » *Outbound Email (SMTP/Sendmail)*
+**Administer » System Settings » Outbound Email (SMTP/Sendmail)**
 
 When you save it will send a test message and you should see confirmation of
 success on the web page (and you should receive the test email).
@@ -87,7 +84,9 @@ Right, you're all set. Do some more testing:
 
 1. On Mandrill's website, on the Webhooks page, there's a "send test" button
    which will send various tests to your webhook. If you've configured things
-   correctly this will return a successful message.
+   correctly this will return a successful message. (Note that if you inspect
+   your CiviCRM logs you'll see that it rejects the events in the test webhook
+   with messages about missing verp data - that's normal for the test events.)
 
 2. Then try making a CiviMail/Mosaico mailing to a group with just test email
    accounts in it, e.g. accounts you own. Also good to include an email that
